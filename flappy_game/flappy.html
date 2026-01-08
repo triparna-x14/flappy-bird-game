@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flappy Bird</title>
+
+<style>
+  body {
+    margin: 0;
+    background: #70c5ce;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  canvas {
+    border: 2px solid #000;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game" width="400" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+/* IMAGES */
+const birdImg = new Image();
+const treeImg = new Image();
+birdImg.src = "bird.png";
+treeImg.src = "pine.png";
+
+/* GAME DATA */
+let birdY = 300;
+let birdSpeed = 0;
+const birdX = 80;
+
+let pipes = [];
+let frame = 0;
+let score = 0;
+let highScore = localStorage.getItem("highScore") || 0;
+let gameOver = false;
+
+/* CONTROLS */
+document.addEventListener("keydown", jump);
+canvas.addEventListener("click", jump);
+
+function jump() {
+  if (!gameOver) {
+    birdSpeed = -8;
+  } else {
+    restart();
+  }
+}
+
+/* START AFTER IMAGES LOAD */
+let loaded = 0;
+birdImg.onload = treeImg.onload = () => {
+  loaded++;
+  if (loaded === 2) gameLoop();
+};
+
+function gameLoop() {
+  /* SKY BACKGROUND (FIXES WHITE BOX) */
+  ctx.fillStyle = "#70c5ce";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  /* BIRD */
+  birdSpeed += 0.4;
+  birdY += birdSpeed;
+  ctx.drawImage(birdImg, birdX, birdY, 34, 24);
+
+  /* CREATE TREES */
+  if (frame % 120 === 0) {
+    let topHeight = Math.random() * 200 + 60;
+    pipes.push({
+      x: 400,
+      width: 70,
+      top: topHeight,
+      bottom: 600 - topHeight - 200,
+      passed: false
+    });
+  }
+
+  pipes.forEach(pipe => {
+    pipe.x -= 2.5;
+
+    // TOP TREE
+    ctx.save();
+    ctx.translate(pipe.x + pipe.width / 2, pipe.top);
+    ctx.rotate(Math.PI);
+    ctx.drawImage(treeImg, -pipe.width / 2, 0, pipe.width, pipe.top);
+    ctx.restore();
+
+    // BOTTOM TREE
+    ctx.drawImage(treeImg, pipe.x, 600 - pipe.bottom, pipe.width, pipe.bottom);
+
+    /* SCORE LOGIC */
+    if (!pipe.passed && pipe.x + pipe.width < birdX) {
+      score++;
+      pipe.passed = true;
+    }
+
+    /* COLLISION */
+    if (
+      birdX < pipe.x + pipe.width &&
+      birdX + 34 > pipe.x &&
+      (birdY < pipe.top || birdY + 24 > 600 - pipe.bottom)
+    ) {
+      endGame();
+    }
+  });
+
+  pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+
+  /* GROUND & SKY LIMIT */
+  if (birdY < 0 || birdY + 24 > 600) {
+    endGame();
+  }
+
+  /* SCORE DISPLAY */
+  ctx.fillStyle = "#fff";
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + score, 20, 30);
+  ctx.fillText("High: " + highScore, 20, 55);
+
+  if (!gameOver) {
+    frame++;
+    requestAnimationFrame(gameLoop);
+  } else {
+    ctx.fillStyle = "red";
+    ctx.font = "30px Arial";
+    ctx.fillText("GAME OVER", 90, 300);
+    ctx.font = "16px Arial";
+    ctx.fillText("Click or Press Key", 110, 335);
+  }
+}
+
+function endGame() {
+  gameOver = true;
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem("highScore", highScore);
+  }
+}
+
+function restart() {
+  birdY = 300;
+  birdSpeed = 0;
+  pipes = [];
+  score = 0;
+  frame = 0;
+  gameOver = false;
+  gameLoop();
+}
+</script>
+
+</body>
+</html>
